@@ -1,3 +1,6 @@
+cookies.json
+config.json
+guides/*
 *.bat
 *.log
 node_modules
