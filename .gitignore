@@ -1,0 +1,13 @@
+*.bat
+*.log
+node_modules
+package-lock.json
+.git/*
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+*/.DS_Store
+.DS_Store

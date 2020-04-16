@@ -1,0 +1,74 @@
+"use strict";
+const puppeteer = require("puppeteer");
+const PDFMerger = require("pdf-merger-js");
+const fs = require("fs-extra");
+const { outputPath, overwrite } = fs.require("config.json");
+let page = null;
+let stylesheet = null;
+
+async function convertToPDF(url, name, i) {
+    let path = `${outputPath}/${name}/`;
+    let filename = `${i}.pdf`;
+
+    if (!overwrite && await fs.pathExists(path + filename)) {
+        return path + filename;
+    }
+
+    await fs.ensureDir(path);
+    await page.goto(url, { "waitUntil": "networkidle2" });
+    await page.addStyleTag({ "content": stylesheet });
+
+    let height = await page.evaluate(() => {
+        let article = document.querySelector("#content article") || document.querySelector("#content") || document.body;
+        return article.scrollHeight;
+    });
+    path += filename;
+    await page.pdf({ path, height, "printBackground": true });
+    return path;
+}
+
+(async() => {
+    stylesheet = await fs.readFile("stylesheet.css", "utf8");
+    const cookies = await fs.readJSON("cookies.json");
+    const browser = await puppeteer.launch();
+
+    page = await browser.newPage();
+    await page.setJavaScriptEnabled(true);
+    await page.setCookie(...cookies);
+    await page.emulateMedia("screen");
+
+    await page.goto("https://primagames.com/accounts/account/my_guides", { "waitUntil": "networkidle2" });
+    let guides = await page.evaluate(() => [...document.querySelectorAll("a.cover")].map(e => ({
+        "url":   e.href,
+        "title": e.nextSiblings(".title")[0].innerText.replace(/[^A-Za-z0-9 ]+/g, "")
+    })));
+
+    for (let guide of guides) {
+        let merger = new PDFMerger();
+        let { url, title } = guide;
+        await page.goto(url, { "waitUntil": "networkidle2" });
+
+        let pages = await page.evaluate(() => [...document.querySelectorAll("#chapters a[data-section-id]")].map(e => e.href));
+        for (let i = 1; i <= pages.length; i++) {
+            let page = pages[i - 1];
+            let path = await convertToPDF(page, title, i);
+            console.log(path);
+            merger.add(path);
+        }
+
+        let savePath = `${outputPath}/${title}.pdf`;
+        if (!overwrite && await fs.pathExists(savePath)) {
+            console.log(savePath);
+            continue;
+        }
+
+        await merger.save(savePath);
+        console.log(savePath);
+    }
+
+    await browser.close();
+    process.exit(0);
+})().catch(err => {
+    console.log(err);
+    process.exit(1);
+});

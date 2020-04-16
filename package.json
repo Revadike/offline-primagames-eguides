@@ -1,0 +1,28 @@
+{
+    "name": "offline-primagames-eguides",
+    "version": "1.0.0",
+    "description": "Download your e-guides from primagames for offline use.",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "node index.js"
+    },
+    "author": "Revadike <https://revadike.ga>",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/revadike/advertisements-manager.git"
+    },
+    "bugs": {
+        "url": "https://github.com/revadike/offline-primagames-eguides/issues"
+    },
+    "homepage": "https://github.com/revadike/offline-primagames-eguides",
+    "devDependencies": {
+        "eslint": "^6.8.0"
+    },
+    "dependencies": {
+        "fs-extra": "^9.0.0",
+        "pdf-merger-js": "^3.0.1",
+        "puppeteer": "^3.0.0"
+    }
+}
