@@ -6,6 +6,14 @@ const { outputPath, overwrite } = require("./config.json");
 let page = null;
 let stylesheet = null;
 
+async function ensureGoTo(page, url) {
+    let response = await page.goto(url, { "waitUntil": "networkidle2" });
+    while (response.status() !== 200) {
+        response = page.reload();
+    }
+    return page;
+}
+
 async function convertToPDF(url, name, i) {
     let path = `${outputPath}/${name}/`;
     let filename = `${i}.pdf`;
@@ -15,7 +23,7 @@ async function convertToPDF(url, name, i) {
     }
 
     await fs.ensureDir(path);
-    await page.goto(url, { "waitUntil": "networkidle2" });
+    page = await ensureGoTo(page, url);
     await page.addStyleTag({ "content": stylesheet });
 
     let height = await page.evaluate(() => {
@@ -34,10 +42,11 @@ async function convertToPDF(url, name, i) {
 
     page = await browser.newPage();
     await page.setJavaScriptEnabled(true);
+    await page.setDefaultNavigationTimeout(90000);
     await page.setCookie(...cookies);
     await page.emulateMedia("screen");
 
-    await page.goto("https://primagames.com/accounts/account/my_guides", { "waitUntil": "networkidle2" });
+    page = await ensureGoTo(page, "https://primagames.com/accounts/account/my_guides");
     let guides = await page.evaluate(() => [...document.querySelectorAll("a.cover")].map(e => ({
         "url":   e.href,
         "title": e.nextSiblings(".title")[0].innerText.replace(/[^A-Za-z0-9 ]+/g, "")
@@ -46,7 +55,7 @@ async function convertToPDF(url, name, i) {
     for (let guide of guides) {
         let merger = new PDFMerger();
         let { url, title } = guide;
-        await page.goto(url, { "waitUntil": "networkidle2" });
+        page = await ensureGoTo(page, url);
 
         let pages = await page.evaluate(() => [...document.querySelectorAll("#chapters a[data-section-id]")].map(e => e.href));
         for (let i = 1; i <= pages.length; i++) {
