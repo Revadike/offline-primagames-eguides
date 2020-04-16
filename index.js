@@ -2,7 +2,7 @@
 const puppeteer = require("puppeteer");
 const PDFMerger = require("pdf-merger-js");
 const fs = require("fs-extra");
-const { outputPath, overwrite } = fs.require("config.json");
+const { outputPath, overwrite } = require("./config.json");
 let page = null;
 let stylesheet = null;
 
