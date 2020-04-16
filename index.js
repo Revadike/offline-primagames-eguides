@@ -15,14 +15,14 @@ async function ensureGoTo(page, url) {
 }
 
 async function convertToPDF(url, name, i) {
-    let path = `${outputPath}/${name}/`;
     let filename = `${i}.pdf`;
+    let path = `${outputPath}/${name}/${filename}`;
 
-    if (!overwrite && await fs.pathExists(path + filename)) {
-        return path + filename;
+    if (!overwrite && await fs.pathExists(path)) {
+        return path;
     }
 
-    await fs.ensureDir(path);
+    await fs.ensureDir(path.replace(filename, ""));
     page = await ensureGoTo(page, url);
     await page.addStyleTag({ "content": stylesheet });
 
@@ -30,7 +30,6 @@ async function convertToPDF(url, name, i) {
         let article = document.querySelector("#content article") || document.querySelector("#content") || document.body;
         return article.scrollHeight;
     });
-    path += filename;
     await page.pdf({ path, height, "printBackground": true });
     return path;
 }
