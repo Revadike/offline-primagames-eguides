@@ -1,10 +1,8 @@
 "use strict";
-const puppeteer = require("puppeteer");
-const PDFMerger = require("pdf-merger-js");
 const fs = require("fs-extra");
+const PDFMerger = require("pdf-merger-js");
+const puppeteer = require("puppeteer");
 const { outputPath, overwrite } = require("./config.json");
-let page = null;
-let stylesheet = null;
 
 async function ensureGoTo(page, url) {
     let response = await page.goto(url, { "waitUntil": "networkidle2" });
@@ -14,7 +12,7 @@ async function ensureGoTo(page, url) {
     return page;
 }
 
-async function convertToPDF(url, name, i) {
+async function convertToPDF(page, url, name, i, stylesheet) {
     let filename = `${i}.pdf`;
     let path = `${outputPath}/${name}/${filename}`;
 
@@ -35,16 +33,15 @@ async function convertToPDF(url, name, i) {
 }
 
 (async() => {
-    stylesheet = await fs.readFile("stylesheet.css", "utf8");
+    const stylesheet = await fs.readFile("stylesheet.css", "utf8");
     const cookies = await fs.readJSON("cookies.json");
     const browser = await puppeteer.launch();
+    const page = await browser.newPage();
 
-    page = await browser.newPage();
     await page.setJavaScriptEnabled(true);
     await page.setDefaultNavigationTimeout(90000);
     await page.setCookie(...cookies);
     await page.emulateMedia("screen");
-
     page = await ensureGoTo(page, "https://primagames.com/accounts/account/my_guides");
     let guides = await page.evaluate(() => [...document.querySelectorAll("a.cover")].map(e => ({
         "url":   e.href,
@@ -58,8 +55,7 @@ async function convertToPDF(url, name, i) {
 
         let pages = await page.evaluate(() => [...document.querySelectorAll("#chapters a[data-section-id]")].map(e => e.href));
         for (let i = 1; i <= pages.length; i++) {
-            let page = pages[i - 1];
-            let path = await convertToPDF(page, title, i);
+            let path = await convertToPDF(page, pages[i - 1], title, i, stylesheet);
             console.log(path);
             merger.add(path);
         }
