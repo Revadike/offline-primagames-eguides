@@ -98,7 +98,7 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
     page = await ensureGoTo(page, "https://primagames.com/accounts/account/my_guides");
     let guides = await page.evaluate(() => [...document.querySelectorAll("a.cover")].map(e => ({
         "url":   e.href,
-        "title": e.nextSiblings(".title")[0].innerText.replace(/[^A-Za-z0-9 ]+/g, "")
+        "title": e.nextSiblings(".title")[0].innerText.replace(/[^A-Za-z0-9 ]+/g, "").replace(/[ ]+/g, " ")
     })));
     await page.close();
     console.log(`Found ${guides.length} eGuides`);
