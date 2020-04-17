@@ -69,6 +69,7 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
     }
 
     await merger.save(path);
+    await page.close();
     console.log(path);
 }
 
