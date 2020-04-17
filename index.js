@@ -3,7 +3,7 @@ const IO = require("fs-extra");
 const PDFMerger = require("pdf-merger-js");
 const Throttle = require("promise-parallel-throttle");
 const Puppeteer = require("puppeteer");
-const { outputPath, overwrite, maxInProgress, maxRetries, minBytes } = require("./config.json");
+const { keepTemp, maxInProgress, maxRetries, minBytes, outputPath, overwrite } = require("./config.json");
 
 async function newPage(browser, cookies) {
     let page = await browser.newPage();
@@ -14,30 +14,38 @@ async function newPage(browser, cookies) {
     return page;
 }
 
-async function ensureFileSize(fn, path) {
-    await fn();
-    let retries = 0;
-    let { size } = await IO.stat(path);
-    while (size < minBytes && retries < maxRetries) {
-        retries++;
-        await fn();
-        ({ size } = await IO.stat(path));
-    }
-    return retries >= maxRetries;
-}
-
 async function ensureGoTo(page, url) {
     let response = await page.goto(url, { "waitUntil": "networkidle0" }).catch(() => false);
+
     while (response && response.status() !== 200) {
         await page.waitFor(10000);
         response = await page.reload().catch(() => false);
     }
+
     if (!response) {
         await page.waitFor(10000);
         let newPage = await ensureGoTo(page, url);
         return newPage;
     }
+
     return page;
+}
+
+async function ensurePDFSize(page, path, height) {
+    await page.waitFor(1000);
+    await page.pdf({ path, height, "printBackground": true });
+
+    let retries = 0;
+    let { size } = await IO.stat(path);
+    while (size < minBytes && retries < maxRetries) {
+        await page.waitFor(1000);
+        await page.pdf({ path, height, "printBackground": true });
+
+        retries++;
+        ({ size } = await IO.stat(path));
+    }
+
+    return retries >= maxRetries;
 }
 
 async function convertToPDF(tab, url, name, i, stylesheet) {
@@ -56,11 +64,8 @@ async function convertToPDF(tab, url, name, i, stylesheet) {
         let article = document.querySelector("#content article") || document.querySelector("#content") || document.body;
         return article.scrollHeight;
     });
-    let fn = async() => {
-        await page.waitFor(1000);
-        await page.pdf({ path, height, "printBackground": true });
-    };
-    await ensureFileSize(fn, path);
+
+    await ensurePDFSize(page, path, height);
     return path;
 }
 
@@ -77,17 +82,24 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
     page = await ensureGoTo(page, url);
 
     let pages = await page.evaluate(() => [...document.querySelectorAll("#toc a[data-section-id]")].map(e => e.href));
+    if (pages.length === 0) {
+        console.log(`No pages found for ${title}`);
+        return;
+    }
+
     for (let i = 1; i <= pages.length; i++) {
         let path = await convertToPDF(page, pages[i - 1], title, i, stylesheet);
         merger.add(path);
         console.log(path);
     }
 
-    let fn = async() => { await merger.save(path); };
-    await ensureFileSize(fn, path);
+    await merger.save(path);
     await page.close();
-    await IO.remove(`${outputPath}/${title}/`);
     console.log(path);
+
+    if (!keepTemp) {
+        await IO.remove(`${outputPath}/${title}/`);
+    }
 }
 
 (async() => {
@@ -101,6 +113,7 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
         "url":   e.href,
         "title": e.nextSiblings(".title")[0].innerText.replace(/[^A-Za-z0-9 ]+/g, "").replace(/[ ]+/g, " ")
     })));
+
     await page.close();
     console.log(`Found ${guides.length} eGuides`);
 
