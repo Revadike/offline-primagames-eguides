@@ -64,7 +64,7 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
     let page = await newPage(browser, cookies);
     page = await ensureGoTo(page, url);
 
-    let pages = await page.evaluate(() => [...document.querySelectorAll("#chapters a[data-section-id]")].map(e => e.href));
+    let pages = await page.evaluate(() => [...document.querySelectorAll("#toc a[data-section-id]")].map(e => e.href));
     for (let i = 1; i <= pages.length; i++) {
         let path = await convertToPDF(page, pages[i - 1], title, i, stylesheet);
         merger.add(path);
