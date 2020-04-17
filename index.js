@@ -3,7 +3,7 @@ const IO = require("fs-extra");
 const PDFMerger = require("pdf-merger-js");
 const Throttle = require("promise-parallel-throttle");
 const Puppeteer = require("puppeteer");
-const { outputPath, overwrite, maxInProgress } = require("./config.json");
+const { outputPath, overwrite, maxInProgress, maxRetries, minBytes } = require("./config.json");
 
 async function newPage(browser, cookies) {
     let page = await browser.newPage();
@@ -12,6 +12,18 @@ async function newPage(browser, cookies) {
     await page.setCookie(...cookies);
     await page.emulateMedia("screen");
     return page;
+}
+
+async function ensureFileSize(fn, path) {
+    await fn();
+    let retries = 0;
+    let { size } = await IO.stat(path);
+    while (size < minBytes && retries < maxRetries) {
+        retries++;
+        await fn();
+        ({ size } = await IO.stat(path));
+    }
+    return retries >= maxRetries;
 }
 
 async function ensureGoTo(page, url) {
@@ -44,8 +56,11 @@ async function convertToPDF(tab, url, name, i, stylesheet) {
         let article = document.querySelector("#content article") || document.querySelector("#content") || document.body;
         return article.scrollHeight;
     });
-    await page.waitFor(1000);
-    await page.pdf({ path, height, "printBackground": true });
+    let fn = async() => {
+        await page.waitFor(1000);
+        await page.pdf({ path, height, "printBackground": true });
+    };
+    await ensureFileSize(fn, path);
     return path;
 }
 
@@ -68,7 +83,8 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
         console.log(path);
     }
 
-    await merger.save(path);
+    let fn = async() => { await merger.save(path); };
+    await ensureFileSize(fn, path);
     await page.close();
     console.log(path);
 }
