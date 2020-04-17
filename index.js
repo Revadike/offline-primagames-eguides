@@ -45,7 +45,7 @@ async function convertToPDF(tab, url, name, i, stylesheet) {
 
     let height = await page.evaluate(() => {
         let article = document.querySelector("#content article") || document.querySelector("#content") || document.body;
-        return 0.95 * article.scrollHeight; // seems there is some extra percentage of extra length
+        return article.scrollHeight;
     });
     await page.pdf({ path, height, "printBackground": true });
     return path;
