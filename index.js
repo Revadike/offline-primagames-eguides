@@ -86,6 +86,7 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
     let fn = async() => { await merger.save(path); };
     await ensureFileSize(fn, path);
     await page.close();
+    await IO.remove(`${outputPath}/${title}/`);
     console.log(path);
 }
 
