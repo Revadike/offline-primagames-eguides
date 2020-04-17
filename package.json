@@ -23,6 +23,7 @@
     "dependencies": {
         "fs-extra": "^9.0.0",
         "pdf-merger-js": "^3.0.1",
+        "promise-parallel-throttle": "^3.3.0",
         "puppeteer": "^3.0.0"
     }
 }

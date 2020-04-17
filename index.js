@@ -1,8 +1,9 @@
 "use strict";
-const fs = require("fs-extra");
+const IO = require("fs-extra");
 const PDFMerger = require("pdf-merger-js");
-const puppeteer = require("puppeteer");
-const { outputPath, overwrite, maxParallel } = require("./config.json");
+const Throttle = require("promise-parallel-throttle");
+const Puppeteer = require("puppeteer");
+const { outputPath, overwrite, maxInProgress } = require("./config.json");
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -35,11 +36,11 @@ async function convertToPDF(tab, url, name, i, stylesheet) {
     let filename = `${i}.pdf`;
     let path = `${outputPath}/${name}/${filename}`;
 
-    if (!overwrite && await fs.pathExists(path)) {
+    if (!overwrite && await IO.pathExists(path)) {
         return path;
     }
 
-    await fs.ensureDir(path.replace(filename, ""));
+    await IO.ensureDir(path.replace(filename, ""));
     let page = await ensureGoTo(tab, url);
     await page.addStyleTag({ "content": stylesheet });
 
@@ -54,7 +55,7 @@ async function convertToPDF(tab, url, name, i, stylesheet) {
 async function scrapeGuide(guide, browser, cookies, stylesheet) {
     let { url, title } = guide;
     let path = `${outputPath}/${title}.pdf`;
-    if (!overwrite && await fs.pathExists(path)) {
+    if (!overwrite && await IO.pathExists(path)) {
         console.log(path);
         return;
     }
@@ -75,9 +76,9 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
 }
 
 (async() => {
-    const stylesheet = await fs.readFile("stylesheet.css", "utf8");
-    const cookies = await fs.readJSON("cookies.json");
-    const browser = await puppeteer.launch();
+    const stylesheet = await IO.readFile("stylesheet.css", "utf8");
+    const cookies = await IO.readJSON("cookies.json");
+    const browser = await Puppeteer.launch();
 
     let page = await newPage(browser, cookies);
     page = await ensureGoTo(page, "https://primagames.com/accounts/account/my_guides");
@@ -88,9 +89,7 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
     await page.close();
     console.log(`Found ${guides.length} eGuides`);
 
-    for (let i = 0; i < guides.length; i += maxParallel) {
-        await Promise.all(guides.slice(i, i + maxParallel).map(guide => scrapeGuide(guide, browser, cookies, stylesheet)));
-    }
+    await Throttle.all(guides.map(guide => () => scrapeGuide(guide, browser, cookies, stylesheet)), { maxInProgress });
     await browser.close();
     process.exit(0);
 })().catch(err => {
