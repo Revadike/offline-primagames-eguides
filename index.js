@@ -90,7 +90,6 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
 
     for (let i = 0; i < guides.length; i += maxParallel) {
         await Promise.all(guides.slice(i, i + maxParallel).map(guide => scrapeGuide(guide, browser, cookies, stylesheet)));
-        console.log(i);
     }
     await browser.close();
     process.exit(0);
