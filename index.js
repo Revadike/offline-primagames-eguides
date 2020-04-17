@@ -5,10 +5,6 @@ const Throttle = require("promise-parallel-throttle");
 const Puppeteer = require("puppeteer");
 const { outputPath, overwrite, maxInProgress } = require("./config.json");
 
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 async function newPage(browser, cookies) {
     let page = await browser.newPage();
     await page.setJavaScriptEnabled(true);
@@ -19,13 +15,13 @@ async function newPage(browser, cookies) {
 }
 
 async function ensureGoTo(page, url) {
-    let response = await page.goto(url, { "waitUntil": "networkidle2" }).catch(() => false);
+    let response = await page.goto(url, { "waitUntil": "networkidle0" }).catch(() => false);
     while (response && response.status() !== 200) {
-        await sleep(10000);
+        await page.waitFor(10000);
         response = await page.reload().catch(() => false);
     }
     if (!response) {
-        await sleep(10000);
+        await page.waitFor(10000);
         let newPage = await ensureGoTo(page, url);
         return newPage;
     }
@@ -48,6 +44,7 @@ async function convertToPDF(tab, url, name, i, stylesheet) {
         let article = document.querySelector("#content article") || document.querySelector("#content") || document.body;
         return article.scrollHeight;
     });
+    await page.waitFor(1000);
     await page.pdf({ path, height, "printBackground": true });
     return path;
 }
