@@ -86,6 +86,7 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
     let page = await newPage(browser, cookies);
     page = await ensureGoTo(page, url);
     if (!page) {
+        console.log(`Failed to fetch ${url}`);
         return;
     }
 
@@ -100,6 +101,8 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
         if (path) {
             merger.add(path);
             console.log(path);
+        } else {
+            console.log(`Failed to fetch ${pages[i - 1]}`);
         }
     }
 
