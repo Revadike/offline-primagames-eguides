@@ -14,21 +14,23 @@ async function newPage(browser, cookies) {
     return page;
 }
 
-async function ensureGoTo(page, url) {
+async function ensureGoTo(page, url, retries = 0) {
+    let retry = retries;
     let response = await page.goto(url, { "waitUntil": "networkidle0" }).catch(() => false);
 
-    while (response && response.status() !== 200) {
+    while (response && response.status() !== 200 && retry < maxRetries) {
         await page.waitFor(10000);
+        retry++;
         response = await page.reload().catch(() => false);
     }
 
-    if (!response) {
+    if (!response && retry < maxRetries) {
         await page.waitFor(10000);
-        let newPage = await ensureGoTo(page, url);
+        let newPage = await ensureGoTo(page, url, ++retry);
         return newPage;
     }
 
-    return page;
+    return retry < maxRetries ? page : false;
 }
 
 async function ensurePDFSize(page, path, height) {
@@ -58,8 +60,11 @@ async function convertToPDF(tab, url, name, i, stylesheet) {
 
     await IO.ensureDir(path.replace(filename, ""));
     let page = await ensureGoTo(tab, url);
-    await page.addStyleTag({ "content": stylesheet });
+    if (!page) {
+        return false;
+    }
 
+    await page.addStyleTag({ "content": stylesheet });
     let height = await page.evaluate(() => {
         let article = document.querySelector("#content article") || document.querySelector("#content") || document.body;
         return article.scrollHeight;
@@ -80,6 +85,9 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
     let merger = new PDFMerger();
     let page = await newPage(browser, cookies);
     page = await ensureGoTo(page, url);
+    if (!page) {
+        return;
+    }
 
     let pages = await page.evaluate(() => [...document.querySelectorAll("#toc a[data-section-id]")].map(e => e.href));
     if (pages.length === 0) {
@@ -89,8 +97,10 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
 
     for (let i = 1; i <= pages.length; i++) {
         let path = await convertToPDF(page, pages[i - 1], title, i, stylesheet);
-        merger.add(path);
-        console.log(path);
+        if (path) {
+            merger.add(path);
+            console.log(path);
+        }
     }
 
     await merger.save(path);
@@ -109,6 +119,10 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
 
     let page = await newPage(browser, cookies);
     page = await ensureGoTo(page, "https://primagames.com/accounts/account/my_guides");
+    if (!page) {
+        throw new Error("Unable to fetch PrimaGames eGuides");
+    }
+
     let guides = await page.evaluate(() => [...document.querySelectorAll("a.cover")].map(e => ({
         "url":   e.href,
         "title": e.nextSiblings(".title")[0].innerText.replace(/[^A-Za-z0-9 ]+/g, "").replace(/[ ]+/g, " ")
