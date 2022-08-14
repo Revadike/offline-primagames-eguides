@@ -22,13 +22,21 @@ async function ensureGoTo(page, url, retries = 0) {
     let response = await page.goto(url, { "waitUntil": "networkidle0" }).catch(() => false);
 
     while (response && response.status() !== 200 && retry < maxRetries) {
-        await page.waitForTimeout(10000);
+        if (page.waitForTimeout) {
+            await page.waitForTimeout(10000);
+        } else {
+            await page.wait(10000);
+        }
         retry++;
         response = await page.reload().catch(() => false);
     }
 
     if (!response && retry < maxRetries) {
-        await page.waitForTimeout(10000);
+        if (page.waitForTimeout) {
+            await page.waitForTimeout(10000);
+        } else {
+            await page.wait(10000);
+        }
         let newPage = await ensureGoTo(page, url, ++retry);
         return newPage;
     }
@@ -37,13 +45,21 @@ async function ensureGoTo(page, url, retries = 0) {
 }
 
 async function ensurePDFSize(page, path, height) {
-    await page.waitForTimeout(1000);
+    if (page.waitForTimeout) {
+        await page.waitForTimeout(1000);
+    } else {
+        await page.wait(1000);
+    }
     await page.pdf({ path, height, "printBackground": true });
 
     let retries = 0;
     let { size } = await IO.stat(path);
     while (size < minBytes && retries < maxRetries) {
-        await page.waitForTimeout(1000);
+        if (page.waitForTimeout) {
+            await page.waitForTimeout(1000);
+        } else {
+            await page.wait(1000);
+        }
         await page.pdf({ path, height, "printBackground": true });
 
         retries++;
