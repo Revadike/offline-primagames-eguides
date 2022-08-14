@@ -1,4 +1,3 @@
-"use strict";
 const IO = require("fs-extra");
 const PDFMerger = require("pdf-merger-js");
 const Throttle = require("promise-parallel-throttle");
@@ -9,8 +8,12 @@ async function newPage(browser, cookies) {
     let page = await browser.newPage();
     await page.setJavaScriptEnabled(true);
     await page.setDefaultNavigationTimeout(90000);
-    await page.setCookie(...cookies);
-    await page.emulateMedia("screen");
+    await page.setCookie(...cookies.map(c => ({ "name": c.name, "value": c.value, "domain": c.domain, "path": c.path })));
+    if (page.emulateMedia) {
+        await page.emulateMedia("screen");
+    } else if (page.emulateMediaType) {
+        await page.emulateMediaType("screen");
+    }
     return page;
 }
 
@@ -19,13 +22,13 @@ async function ensureGoTo(page, url, retries = 0) {
     let response = await page.goto(url, { "waitUntil": "networkidle0" }).catch(() => false);
 
     while (response && response.status() !== 200 && retry < maxRetries) {
-        await page.waitFor(10000);
+        await page.waitForTimeout(10000);
         retry++;
         response = await page.reload().catch(() => false);
     }
 
     if (!response && retry < maxRetries) {
-        await page.waitFor(10000);
+        await page.waitForTimeout(10000);
         let newPage = await ensureGoTo(page, url, ++retry);
         return newPage;
     }
@@ -34,13 +37,13 @@ async function ensureGoTo(page, url, retries = 0) {
 }
 
 async function ensurePDFSize(page, path, height) {
-    await page.waitFor(1000);
+    await page.waitForTimeout(1000);
     await page.pdf({ path, height, "printBackground": true });
 
     let retries = 0;
     let { size } = await IO.stat(path);
     while (size < minBytes && retries < maxRetries) {
-        await page.waitFor(1000);
+        await page.waitForTimeout(1000);
         await page.pdf({ path, height, "printBackground": true });
 
         retries++;
@@ -121,7 +124,7 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
     const browser = await Puppeteer.launch();
 
     let page = await newPage(browser, cookies);
-    page = await ensureGoTo(page, "https://primagames.com/accounts/account/my_guides");
+    page = await ensureGoTo(page, "https://eguides.primagames.com/accounts/account/my_guides");
     if (!page) {
         throw new Error("Unable to fetch PrimaGames eGuides");
     }
