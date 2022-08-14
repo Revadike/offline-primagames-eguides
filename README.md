@@ -27,4 +27,4 @@ FOR %i IN (C:\eguides\*.pdf) DO start gswin64c -sDEVICE=pdfwrite -dCompatibility
 
 ## Warning
 Depending on your settings and number of guide, this can be quite resource-intensive, since it runs a headless browser in the background.
-Ensure you allocate enough system resources and space beforehand.
+Ensure you allocate enough system resources and space beforehand!
