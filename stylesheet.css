@@ -2,19 +2,29 @@
     -webkit-print-color-adjust: exact;
 }
 
-#content article>section table.tablesorter > thead > tr .header {
+#content article>section table.tablesorter>thead>tr .header {
     background-image: none !important;
     zoom: 0%;
 }
 
+@page,
+#content article {
+    size: auto;
+}
+
+@media print {
+    .page {
+        page-break-after: always;
+    }
+}
+
 .button.annotation-count,
-header > div.topright > div.buttons,
-#content > div.footer,
+header>div.topright>div.buttons,
+#content>div.footer,
 input,
-tr.table-options > td > div,
+tr.table-options>td>div,
 .tableFloatingHeader,
-.left-gutter-outer
-{
+.left-gutter-outer {
     display: none !important;
     visibility: hidden !important;
 }

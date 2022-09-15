@@ -10,9 +10,9 @@ async function newPage(browser, cookies) {
     await page.setDefaultNavigationTimeout(90000);
     await page.setCookie(...cookies.map(c => ({ "name": c.name, "value": c.value, "domain": c.domain, "path": c.path })));
     if (page.emulateMedia) {
-        await page.emulateMedia("screen");
+        await page.emulateMedia("print");
     } else if (page.emulateMediaType) {
-        await page.emulateMediaType("screen");
+        await page.emulateMediaType("print");
     }
     return page;
 }
@@ -85,8 +85,11 @@ async function convertToPDF(tab, url, name, i, stylesheet) {
 
     await page.addStyleTag({ "content": stylesheet });
     let height = await page.evaluate(() => {
-        let article = document.querySelector("#content article") || document.querySelector("#content") || document.body;
-        return article.scrollHeight;
+        // let article = document.querySelector("#content article") || document.querySelector("#content") || document.body;
+        let article = document.querySelector("#content article");
+        let header = document.querySelector("body > header");
+        let sum = article.scrollHeight + header.scrollHeight + 35; // 35 is bottom margin of article
+        return `${sum}px`;
     });
 
     await ensurePDFSize(page, path, height);

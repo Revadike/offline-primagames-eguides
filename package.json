@@ -1,6 +1,6 @@
 {
     "name": "offline-primagames-eguides",
-    "version": "1.1.1",
+    "version": "1.2.0",
     "description": "Download your e-guides from primagames for offline use.",
     "main": "index.js",
     "scripts": {
@@ -21,9 +21,9 @@
         "eslint": "^6.8.0"
     },
     "dependencies": {
-        "fs-extra": "latest",
-        "pdf-merger-js": "latest",
-        "promise-parallel-throttle": "latest",
-        "puppeteer": "latest"
+        "fs-extra": "^10.1.0",
+        "pdf-merger-js": "^4.1.1",
+        "promise-parallel-throttle": "^3.3.0",
+        "puppeteer": "^12.0.1"
     }
 }
