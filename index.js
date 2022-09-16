@@ -87,7 +87,18 @@ async function convertToPDF(tab, url, name, i, stylesheet) {
     let height = await page.evaluate(() => {
         // let article = document.querySelector("#content article") || document.querySelector("#content") || document.body;
         let article = document.querySelector("#content article");
+        if (!article) {
+            console.log(`Failed to obtain article height for page ${url}, please contact report this to developer.`);
+            return "10000px";
+        }
+
         let header = document.querySelector("body > header");
+        if (!header) {
+            console.log(`Failed to obtain header height for page ${url}.`);
+            let sum = article.scrollHeight + 120; // header estimate + 35 is bottom margin of article
+            return `${sum}px`;
+        }
+
         let sum = article.scrollHeight + header.scrollHeight + 35; // 35 is bottom margin of article
         return `${sum}px`;
     });
