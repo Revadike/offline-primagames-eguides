@@ -5,7 +5,7 @@
 Download [your eGuides from PrimaGames](https://eguides.primagames.com/accounts/account/my_guides) for offline use.
 
 ## Requirements
- * [Node.js](https://nodejs.org/download/)
+ * [Node.js](https://nodejs.org/en/)
  * [EditThisCookie](http://www.editthiscookie.com/) or [Cookie-Editor](https://cookie-editor.cgagnier.ca/)
  * ☆ Star this repository
 
