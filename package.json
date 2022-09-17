@@ -1,6 +1,6 @@
 {
     "name": "offline-primagames-eguides",
-    "version": "1.2.2",
+    "version": "1.2.3",
     "description": "Download your e-guides from primagames for offline use.",
     "main": "index.js",
     "scripts": {
