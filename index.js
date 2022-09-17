@@ -88,19 +88,25 @@ async function convertToPDF(tab, url, name, i, stylesheet) {
         // let article = document.querySelector("#content article") || document.querySelector("#content") || document.body;
         let article = document.querySelector("#content article");
         if (!article) {
-            console.log(`Failed to obtain article height for page ${url}, please contact report this to developer.`);
-            return "10000px";
+            let err = new Error("Unable to find article element");
+            err.bestEstimate = "10000px";
+            throw err;
         }
 
         let header = document.querySelector("body > header");
         if (!header) {
-            console.log(`Failed to obtain header height for page ${url}.`);
+            let err = new Error("Unable to find header element");
             let sum = article.scrollHeight + 120; // header estimate + 35 is bottom margin of article
-            return `${sum}px`;
+            err.bestEstimate = `${sum}px`;
+            throw err;
         }
 
         let sum = article.scrollHeight + header.scrollHeight + 35; // 35 is bottom margin of article
         return `${sum}px`;
+    }).catch(err => {
+        console.log(`Failed to evaluate height for page ${url}, please contact the developer and share this error.`, err);
+        console.log(`\nUsing best estimate for page height: ${err.bestEstimate}`);
+        return err.bestEstimate;
     });
 
     await ensurePDFSize(page, path, height);
