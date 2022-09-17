@@ -60,7 +60,7 @@ async function ensurePDFSize(page, path, height) {
         } else {
             await page.wait(1000);
         }
-        await page.pdf({ path, height, "printBackground": true });
+        await page.pdf({ path, height, "printBackground": true, "timeout": 300000 });
 
         retries++;
         ({ size } = await IO.stat(path));
@@ -84,30 +84,40 @@ async function convertToPDF(tab, url, name, i, stylesheet) {
     }
 
     await page.addStyleTag({ "content": stylesheet });
-    let height = await page.evaluate(() => {
-        // let article = document.querySelector("#content article") || document.querySelector("#content") || document.body;
+    let { estimated, height } = await page.evaluate(() => {
+        let estimated = false;
+        let height = 0;
+
         let article = document.querySelector("#content article");
-        if (!article) {
-            let err = new Error("Unable to find article element");
-            err.bestEstimate = "10000px";
-            throw err;
+        if (article) {
+            height = article.scrollHeight;
+        } else {
+            estimated = true;
+            let main = document.querySelector("[tabindex=\"0\"]");
+            let content = document.querySelector("#content");
+            // best height estimate:
+            height = Math.max(
+                main ? main.scrollHeight : 0,
+                content ? content.scrollHeight : 0,
+                document.body.scrollHeight
+            );
         }
 
         let header = document.querySelector("body > header");
-        if (!header) {
-            let err = new Error("Unable to find header element");
-            let sum = article.scrollHeight + 120; // header estimate + 35 is bottom margin of article
-            err.bestEstimate = `${sum}px`;
-            throw err;
+        if (header) {
+            height += header.scrollHeight;
+        } else {
+            estimated = true;
+            height += 90; // header estimate
         }
 
-        let sum = article.scrollHeight + header.scrollHeight + 35; // 35 is bottom margin of article
-        return `${sum}px`;
-    }).catch(err => {
-        console.log(`Failed to evaluate height for page ${url}, please contact the developer and share this error.`, err);
-        console.log(`\nUsing best estimate for page height: ${err.bestEstimate}`);
-        return err.bestEstimate;
+        height += 35; // 35 is bottom margin of article
+        return { estimated, "height": `${height}px` };
     });
+
+    if (estimated) {
+        console.log(`Notice - The following page has a non-standard height: ${url}`);
+    }
 
     await ensurePDFSize(page, path, height);
     return path;
@@ -125,7 +135,7 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
     merger.loadOptions = {
         "ignoreEncryption":     true,
         "throwOnInvalidObject": false
-    }
+    };
     let page = await newPage(browser, cookies);
     page = await ensureGoTo(page, url);
     if (!page) {
