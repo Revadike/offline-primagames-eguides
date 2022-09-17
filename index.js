@@ -122,6 +122,10 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
     }
 
     let merger = new PDFMerger();
+    merger.loadOptions = {
+        "ignoreEncryption":     true,
+        "throwOnInvalidObject": false
+    }
     let page = await newPage(browser, cookies);
     page = await ensureGoTo(page, url);
     if (!page) {
