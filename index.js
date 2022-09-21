@@ -155,10 +155,15 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
             merger.add(path);
             console.log(path);
         } else {
-            console.log(`Failed to fetch ${pages[i - 1]}`);
+            console.log(`Failed to convert to pdf ${pages[i - 1]}`);
         }
     }
 
+    if (page.waitForTimeout) {
+        await page.waitForTimeout(2000);
+    } else {
+        await page.wait(2000);
+    }
     await merger.save(path);
     await page.close();
     console.log(path);
