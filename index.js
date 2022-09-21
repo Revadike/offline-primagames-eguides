@@ -44,13 +44,13 @@ async function ensureGoTo(page, url, retries = 0) {
     return retry < maxRetries ? page : false;
 }
 
-async function ensurePDFSize(page, path, height) {
+async function ensurePDFSize(page, path, height, width) {
     if (page.waitForTimeout) {
         await page.waitForTimeout(1000);
     } else {
         await page.wait(1000);
     }
-    await page.pdf({ path, height, "printBackground": true });
+    await page.pdf({ path, height, width, "printBackground": true });
 
     let retries = 0;
     let { size } = await IO.stat(path);
@@ -60,7 +60,7 @@ async function ensurePDFSize(page, path, height) {
         } else {
             await page.wait(1000);
         }
-        await page.pdf({ path, height, "printBackground": true, "timeout": 300000 });
+        await page.pdf({ path, height, width, "printBackground": true, "timeout": 300000 });
 
         retries++;
         ({ size } = await IO.stat(path));
@@ -84,42 +84,64 @@ async function convertToPDF(tab, url, name, i, stylesheet) {
     }
 
     await page.addStyleTag({ "content": stylesheet });
-    let { estimated, height } = await page.evaluate(() => {
-        let estimated = false;
-        let height = 0;
+    let { height, width } = await page.evaluate(() => {
+        let result = {
+            "height": {
+                "value":     0,
+                "estimated": false
+            },
+            "width": {
+                "value":     0,
+                "estimated": false
+            }
+        };
 
         let article = document.querySelector("#content article");
         if (article) {
-            height = article.scrollHeight;
+            result.height.value = article.scrollHeight;
+            result.width.value = article.scrollWidth;
         } else {
-            estimated = true;
+            result.height.estimated = true;
+            result.width.estimated = true;
             let main = document.querySelector("[tabindex=\"0\"]");
             let content = document.querySelector("#content");
             // best height estimate:
-            height = Math.max(
+            result.height.value = Math.max(
                 main ? main.scrollHeight : 0,
                 content ? content.scrollHeight : 0,
                 document.body.scrollHeight
+            );
+            // best width estimate:
+            result.width.value = Math.max(
+                main ? main.scrollWidth : 0,
+                content ? content.scrollWidth : 0,
+                document.body.scrollWidth
             );
         }
 
         let header = document.querySelector("body > header");
         if (header) {
-            height += header.scrollHeight;
+            result.height.value += header.scrollHeight;
         } else {
-            estimated = true;
-            height += 90; // header estimate
+            result.height.estimated = true;
+            result.height.value += 90; // header estimated height
         }
 
-        height += 35; // 35 is bottom margin of article
-        return { estimated, "height": `${height}px` };
+        result.height.value += 35; // 35 is bottom margin of article
+        result.height.value += "px";
+        result.width.value += "px";
+        return result;
     });
 
-    if (estimated) {
+    if (height.estimated) {
         console.log(`Notice - The following page has a non-standard height: ${url}`);
     }
 
-    await ensurePDFSize(page, path, height);
+    if (width.estimated) {
+        console.log(`Notice - The following page has a non-standard width: ${url}`);
+    }
+
+    await ensurePDFSize(page, path, height.value, width.value);
     return path;
 }
 
@@ -188,6 +210,8 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
         "url":   e.href,
         "title": e.nextSiblings(".title")[0].innerText.replace(/[^A-Za-z0-9 ]+/g, "").replace(/[ ]+/g, " ")
     })));
+
+    guides = guides.filter(guide => guide.title.includes("Civilization"));
 
     await page.close();
     console.log(`Found ${guides.length} eGuides`);
