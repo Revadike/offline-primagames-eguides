@@ -211,8 +211,6 @@ async function scrapeGuide(guide, browser, cookies, stylesheet) {
         "title": e.nextSiblings(".title")[0].innerText.replace(/[^A-Za-z0-9 ]+/g, "").replace(/[ ]+/g, " ")
     })));
 
-    guides = guides.filter(guide => guide.title.includes("Civilization"));
-
     await page.close();
     console.log(`Found ${guides.length} eGuides`);
 
